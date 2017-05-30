@@ -26,7 +26,7 @@ import com.amazonaws.services.s3.model.S3Object;
 public class ImageManipulation implements RequestHandler<Object, Object> {
 	
 	  @Override
-	  public String handleRequest(Object input, Context context) {
+	  public String handleRequest(Object input, Context context) { 
 		  
 		  long start=System.currentTimeMillis();
 	        StringBuilder resultString = new StringBuilder("Success");
