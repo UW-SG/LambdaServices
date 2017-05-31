@@ -1,12 +1,5 @@
 package com.uw.service;
 
-import com.amazonaws.AmazonClientException;
-import com.amazonaws.AmazonServiceException;
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3Client;
-import com.amazonaws.services.s3.model.ObjectMetadata;
-import com.amazonaws.services.s3.model.PutObjectRequest;
-import com.amazonaws.services.s3.model.S3Object;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
@@ -15,13 +8,21 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.PrintStream;
+
 import javax.imageio.ImageIO;
 import javax.imageio.stream.ImageInputStream;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+
+import com.amazonaws.AmazonClientException;
+import com.amazonaws.AmazonServiceException;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3Client;
+import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.services.s3.model.PutObjectRequest;
+import com.amazonaws.services.s3.model.S3Object;
 
 @Path("/imageManipulation")
 public class ImageManipulationService
@@ -33,32 +34,42 @@ public class ImageManipulationService
     return "hello";
   }
   
-  @Path("/{fileName}")
+  @Path("/{bucket}/{fileName}")
   @GET
   @Produces({"text/plain"})
-  public String imageManipulation(@PathParam("fileName") String fileName)
+  public String imageManipulation(@PathParam("fileName") String fileName,@PathParam("bucket") String bucketname)
   {
+	  long start=System.currentTimeMillis();
+
 	  
 	  StringBuilder str= new StringBuilder();
 	  str.append("\nGrayscale :");
-	  str.append(grayScaleImage(fileName));
+	  str.append(grayScaleImage(fileName,bucketname));
 	  
 	  str.append("\nResize :");
-	  str.append(resizeImage(fileName));
+	  str.append(resizeImage(fileName,bucketname));
 	  
 	  str.append("\nRotate :");
-	  str.append(rotateImage(fileName));
+	  str.append(rotateImage(fileName,bucketname));
 	  
+	  long end=System.currentTimeMillis();
+	  str.append("\nTotal time to exeucte all 3 services (milliseconds):"+(end-start));
+	  System.out.println("Total time to exeucte all 3 services (milliseconds):"+(end-start));
+	 
 	  return str.toString();
   }
   
   
-  @Path("/grayscale/{fileName}")
+  @Path("/grayscale/{bucket}/{fileName}")
   @GET
   @Produces({"text/plain"})
-  public String grayScaleImage(@PathParam("fileName") String fileName)
+  public String grayScaleImage(@PathParam("fileName") String fileName,@PathParam("bucket") String bucketName)
   {
-  String bucketName = "uw.services.imagemanipulation";
+
+	  System.out.println("\nGRAYSCALE IMAGE");
+	  long start=System.currentTimeMillis();
+	 
+ // String bucketName = "uw.services.imagemanipulation";
   String imageName = fileName;
   String processedImageName = "grayscale-"+fileName;
 	  
@@ -91,16 +102,23 @@ public class ImageManipulationService
       e.printStackTrace();
       result = "Failed";
     }
+    
+	  long end=System.currentTimeMillis();
+	  System.out.println("Time to execute grayscale service (milliseconds):"+(end-start));
+	 
     return result;
   }
   
   
-  @Path("/resize/{fileName}")
+  @Path("/resize/{bucket}/{fileName}")
   @GET
   @Produces({"text/plain"})
-  public String resizeImage(@PathParam("fileName") String fileName){
+  public String resizeImage(@PathParam("fileName") String fileName,@PathParam("bucket") String bucketName){
     
-	  String bucketName = "uw.services.imagemanipulation";
+	  System.out.println("\nRESIZE MAGE");
+	  long start=System.currentTimeMillis();
+	 
+	//  String bucketName = "uw.services.imagemanipulation";
 	  String imageName = fileName;
 	  String processedImageName = "resize-"+fileName;
 	  
@@ -135,6 +153,9 @@ public class ImageManipulationService
         	result = "Failure";
       }
         
+      long end=System.currentTimeMillis();
+	  System.out.println("Time to execute resizing service (milliseconds):"+(end-start));
+	
       return result;
   
   }
@@ -144,13 +165,15 @@ public class ImageManipulationService
    * http://forum.codecall.net/topic/69182-java-image-rotation/
    */
 
-  @Path("/rotate/{fileName}")
+  @Path("/rotate/{bucket}/{fileName}")
   @GET
   @Produces({"text/plain"})
-  public String rotateImage(@PathParam("fileName") String fileName){
+  public String rotateImage(@PathParam("fileName") String fileName,@PathParam("bucket") String bucketName){
 	  
-	  
-	  String bucketName = "uw.services.imagemanipulation";
+	  System.out.println("\nROTATE MAGE");
+	  long start=System.currentTimeMillis();
+		
+	 // String bucketName = "uw.services.imagemanipulation";
 	  String imageName = fileName;
 	  String processedImageName = "rotate-"+fileName;
 	  
@@ -185,7 +208,10 @@ public class ImageManipulationService
         	e.printStackTrace();
         	result = "Failure";
       }
-        
+       
+      long end=System.currentTimeMillis();
+	  System.out.println("Time to execute image rotation service (milliseconds):"+(end-start));
+	
       return result;
   
   }
@@ -200,10 +226,16 @@ public class ImageManipulationService
     BufferedImage image = null;
     try
     {
+      long start=System.currentTimeMillis();
+          	
       S3Object xFile = s3Client.getObject(bucketName, imageName);
       InputStream contents = xFile.getObjectContent();
       ImageInputStream iin = ImageIO.createImageInputStream(xFile.getObjectContent());
       image = ImageIO.read(iin);
+      
+      long end=System.currentTimeMillis();
+	  System.out.println("Time to read from S3(milliseconds):"+(end-start));
+	
     }
     catch (AmazonServiceException ase)
     {
@@ -230,8 +262,9 @@ public class ImageManipulationService
     AmazonS3 s3client = new AmazonS3Client();
     try
     {
-      System.out.println("Uploading a new object to S3 from a file\n");
+      System.out.println("Uploading a new object to S3 from a file");
       
+
       ByteArrayOutputStream os = new ByteArrayOutputStream();
       ImageIO.write(convertedImage, "jpg", os);
       byte[] buffer = os.toByteArray();
@@ -239,7 +272,14 @@ public class ImageManipulationService
       ObjectMetadata meta = new ObjectMetadata();
       meta.setContentLength(buffer.length);
       meta.setContentType("image/jpg");
+      
+      long start=System.currentTimeMillis();
+	  
+      
       s3client.putObject(new PutObjectRequest(bucketName, processedImageName, is, meta));
+      
+      long end=System.currentTimeMillis();
+	  System.out.println("Time to write from S3(milliseconds):"+(end-start));
     }
     catch (AmazonServiceException ase)
     {
